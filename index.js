@@ -17,6 +17,8 @@ class SBOSocket {
             close: []
         };
 
+        this.chatLogging = true;
+
         this.initializeSocket();
     }
 
@@ -102,7 +104,12 @@ class SBOSocket {
         }, this.reconnectInterval);
     }
 
+    disableChatLogging() {
+        this.chatLogging = false;
+    }
+
     chatLog(message, cCode = "&7") {
+        if (!this.chatLogging) return;
         ChatLib.chat("&6[SBO] " + cCode + message);
     }   
 
