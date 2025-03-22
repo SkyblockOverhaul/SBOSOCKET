@@ -7,8 +7,6 @@ class SBOSocket {
         const path = "/sbo-ws";
         this.url = `${protocol}${hostname}${path}`;
         
-        this.reconnectInterval = 120000;
-        this.reconnectTimeout = null;
         this.connected = false;
 
         this.eventListeners = {
@@ -20,6 +18,7 @@ class SBOSocket {
         this.chatLogging = true;
 
         this.initializeSocket();
+        this.rgisters();
     }
 
     initializeSocket() {
@@ -39,9 +38,6 @@ class SBOSocket {
             this.chatLog("Socket connected", "&a");
             this.connected = true;
             this.emit('open');
-            if (this.reconnectTimeout) {
-                this.reconnectTimeout = null;
-            }
         };
         this.ws.onClose = () => {
             this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
@@ -50,8 +46,18 @@ class SBOSocket {
         };
     }
 
+    rgisters() {
+        register("gameUnload", () => {
+            this.disconnect();
+        });
+    }
+
     connect() {
         this.ws.connect();
+    }
+
+    disconnect() {
+        this.ws.close();
     }
 
     send(type, data = {}) {
