@@ -15,4 +15,6 @@ register("command", (args) => {
     if (args) {
         socket.send('custom_event', args);
     }
+    socket.ws.close();  // Verbindung manuell trennen
+    console.log("[SBO] Verbindung manuell getrennt");
 }).setName("SocketTest");

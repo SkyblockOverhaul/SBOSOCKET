@@ -24,10 +24,8 @@ class SBOSocket {
 
         this.ws.onMessage = (msg) => {
             const data = JSON.parse(msg);
-            if (data.type !== "handshake") {
-                if (data.type && this.eventListeners[data.type]) {
-                    this.emit(data.type, data);
-                }
+            if (data.type && this.eventListeners[data.type]) {
+                this.emit(data.type, data);
             }
         };
         this.ws.onError = (err) => {
@@ -36,16 +34,15 @@ class SBOSocket {
             this.scheduleReconnect();
         };
         this.ws.onOpen = () => {
-            this.log("Connection established");
+            this.chatLog("Socket connected", "&a");
             this.connected = true;
             this.emit('open');
             if (this.reconnectTimeout) {
-                clearTimeout(this.reconnectTimeout);
                 this.reconnectTimeout = null;
             }
         };
         this.ws.onClose = () => {
-            this.log("Connection closed");
+            this.chatLog("Socket closed", "&c");
             this.connected = false;
             this.emit('close');
             this.scheduleReconnect();
@@ -53,7 +50,6 @@ class SBOSocket {
     }
 
     connect() {
-        this.log("Attempting to connect...");
         this.ws.connect();
     }
 
@@ -95,18 +91,19 @@ class SBOSocket {
     }
 
     scheduleReconnect() {
-        if (this.reconnectTimeout) {
-            clearTimeout(this.reconnectTimeout);
-        }
-
-        this.log(`Attempting to reconnect in ${this.reconnectInterval / 1000} seconds...`);
-
+        if (this.reconnectTimeout) return;
+        
+        this.chatLog(`Reconnecting in ${this.reconnectInterval / 1000} seconds...`, "&e");
         this.reconnectTimeout = setTimeout(() => {
-            this.log("Reconnecting...");
+            this.chatLog("Reconnecting Socket...", "&e");
             this.initializeWebSocket();
             this.connect();
         }, this.reconnectInterval);
     }
+
+    chatLog(message, cCode = "&7") {
+        ChatLib.chat("&6[SBO] " + cCode + message);
+    }   
 
     log(...messages) {
         console.log("[SBO]", ...messages);
