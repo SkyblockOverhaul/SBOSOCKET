@@ -1,3 +1,5 @@
+// import socket from "../SBOSOCKET";
+
 /* 
  * this creates a new Event wich needs to be specified in the server
  */
