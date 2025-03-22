@@ -16,10 +16,10 @@ class SBOSocket {
             close: []
         };
 
-        this.initializeWebSocket();
+        this.initializeSocket();
     }
 
-    initializeWebSocket() {
+    initializeSocket() {
         this.ws = new WebSocket(this.url);
 
         this.ws.onMessage = (msg) => {
@@ -96,6 +96,7 @@ class SBOSocket {
         this.chatLog(`Reconnecting in ${this.reconnectInterval / 1000} seconds...`, "&e");
         this.reconnectTimeout = setTimeout(() => {
             this.chatLog("Reconnecting Socket...", "&e");
+            this.initializeSocket();
             this.connect();
         }, this.reconnectInterval);
     }
