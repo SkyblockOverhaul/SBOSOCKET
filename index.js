@@ -34,7 +34,6 @@ class SBOSocket {
         this.ws.onError = (err) => {
             this.logError("Error:", err);
             this.emit('error', err);
-            this.scheduleReconnect();
         };
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
