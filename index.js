@@ -1,5 +1,6 @@
 /// <reference types="../CTAutocomplete" />
 import SBOSocket from './main/socket';
+export default SBOSocket;
 
 const socket = new SBOSocket("api.skyblockoverhaul.com");
 socket.addEvent('custom_event');
