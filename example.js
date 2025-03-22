@@ -8,7 +8,7 @@ socket.addEvent('custom_event');
  * and processes them
  */
 socket.on('custom_event', (response) => {
-    console.log("[SBO] Verarbeitete Antwort:", JSON.stringify(response, null, 2));
+    console.log("[SBO] Answer:", JSON.stringify(response, null, 2));
 });
 
 /* 
