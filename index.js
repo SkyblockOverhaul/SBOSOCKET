@@ -8,6 +8,7 @@ class SBOSocket {
         this.url = `${protocol}${hostname}${path}`;
         
         this.connected = false;
+        this.unloaded = false;
 
         this.eventListeners = {
             error: [],
@@ -40,7 +41,7 @@ class SBOSocket {
             this.emit('open');
         };
         this.ws.onClose = () => {
-            this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
+            if(!this.unloaded) this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
             this.connected = false;
             this.emit('close');
         };
@@ -48,6 +49,7 @@ class SBOSocket {
 
     rgisters() {
         register("gameUnload", () => {
+            this.unloaded = true;
             this.disconnect();
         });
     }
