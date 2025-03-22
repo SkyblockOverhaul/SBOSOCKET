@@ -1,0 +1,13 @@
+{
+  "name": "SBOCHAT",
+  "creator": "RolexDE, D4rkswift",
+  "description": "SBOCHAT is a module wich aims to provide a chat for muted player inside a party",
+  "version": "0.1.0",
+  "entry": "index.js",
+  "requires": [
+    "Vigilance",
+    "PogData",
+    "FileUtilities",
+    "WebSocket"
+  ]
+}
