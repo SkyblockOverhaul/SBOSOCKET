@@ -5,56 +5,120 @@ class SBOSocket {
         const protocol = "wss://";
         this.url = `${protocol}${hostname}${path}`;
         
+        this.reconnectInterval = 120000;
+        this.reconnectTimeout = null;
+        this.connected = false;
+
+        // Standard-Event-Listener
+        this.eventListeners = {
+            error: [],
+            open: [],
+            close: []
+        };
+
+        this.initializeWebSocket();
+    }
+
+    initializeWebSocket() {
         this.ws = new WebSocket(this.url);
-        
-        // Event-Handler
-        this.ws.onMessage = (msg) => console.log("Raw message:", msg);
-        this.ws.onError = (err) => console.error("SBO Error:", err);
-        this.ws.onOpen = () => console.log("SBO Connection established");
-        this.ws.onClose = () => console.log("SBO Connection closed");
+
+        this.ws.onMessage = (msg) => {
+            const data = JSON.parse(msg);
+            if (data.type !== "handshake") {
+                if (data.type && this.eventListeners[data.type]) {
+                    this.emit(data.type, data);
+                }
+            }
+        };
+        this.ws.onError = (err) => {
+            this.logError("Error:", err);
+            this.emit('error', err);
+            this.scheduleReconnect();
+        };
+        this.ws.onOpen = () => {
+            this.log("Connection established");
+            this.connected = true;
+            this.emit('open');
+            if (this.reconnectTimeout) {
+                clearTimeout(this.reconnectTimeout);
+                this.reconnectTimeout = null;
+            }
+        };
+        this.ws.onClose = () => {
+            this.log("Connection closed");
+            this.connected = false;
+            this.emit('close');
+            this.scheduleReconnect();
+        };
     }
 
     connect() {
+        this.log("Attempting to connect...");
         this.ws.connect();
     }
 
-    sendCommand(command, data) {
-        if (this.ws.readyState === WebSocket.OPEN) {
-            const payload = JSON.stringify({
-                cmd: command,
+    send(type, data) {
+        if (this.connected) {
+            this.ws.send(JSON.stringify({
+                type: type,
                 data: data
-            });
-            this.ws.send(payload);
+            }));
         } else {
-            console.error("WebSocket is not open");
+            this.logWarn("Socket not connected, message not sent");
+        }
+    } 
+
+    addEvent(event) {
+        if (!this.eventListeners[event]) {
+            this.eventListeners[event] = [];
         }
     }
 
     on(event, callback) {
-        switch(event) {
-            case 'message':
-                this.ws.onMessage = (msg) => {
-                    try {
-                        callback(JSON.parse(msg));
-                    } catch(e) {
-                        console.error("Invalid JSON:", msg);
-                    }
-                };
-                break;
-            case 'error':
-                this.ws.onError = callback;
-                break;
-            case 'open':
-                this.ws.onOpen = callback;
-                break;
-            case 'close':
-                this.ws.onClose = callback;
-                break;
-            default:
-                console.warn(`Unknown event: ${event}`);
-                break;
+        if (this.eventListeners[event]) {
+            this.eventListeners[event].push(callback);
+        } else {
+            this.logWarn(`Unknown event: ${event}`);
         }
+    }
+
+    emit(event, ...args) {
+        if (this.eventListeners[event]) {
+            this.eventListeners[event].forEach((callback) => {
+                try {
+                    callback(...args);
+                } catch (e) {
+                    this.logError(`Error in ${event} listener:`, e);
+                }
+            });
+        }
+    }
+
+    scheduleReconnect() {
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+        }
+
+        this.log(`Attempting to reconnect in ${this.reconnectInterval / 1000} seconds...`);
+
+        this.reconnectTimeout = setTimeout(() => {
+            this.log("Reconnecting...");
+            this.initializeWebSocket();
+            this.connect();
+        }, this.reconnectInterval);
+    }
+
+    log(...messages) {
+        console.log("[SBO]", ...messages);
+    }
+
+    logError(...messages) {
+        console.error("[SBO]", ...messages);
+    }
+
+    logWarn(...messages) {
+        console.warn("[SBO]", ...messages);
     }
 }
 
-export default SBOSocket
+export default SBOSocket;
