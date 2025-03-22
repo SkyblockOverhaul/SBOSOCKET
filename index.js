@@ -55,7 +55,7 @@ class SBOSocket {
         this.ws.connect();
     }
 
-    send(type, data) {
+    send(type, data = {}) {
         if (this.connected) {
             this.ws.send(JSON.stringify({
                 type: type,
