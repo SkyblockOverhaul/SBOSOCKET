@@ -44,10 +44,9 @@ class SBOSocket {
             }
         };
         this.ws.onClose = () => {
-            this.chatLog("Socket closed", "&c");
+            this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
             this.connected = false;
             this.emit('close');
-            this.scheduleReconnect();
         };
     }
 
@@ -90,17 +89,6 @@ class SBOSocket {
                 }
             });
         }
-    }
-
-    scheduleReconnect() {
-        if (this.reconnectTimeout) return;
-        
-        this.chatLog(`Reconnecting in ${this.reconnectInterval / 1000} seconds...`, "&e");
-        this.reconnectTimeout = setTimeout(() => {
-            this.chatLog("Reconnecting Socket...", "&e");
-            this.initializeSocket();
-            this.connect();
-        }, this.reconnectInterval);
     }
 
     disableChatLogging() {
