@@ -96,7 +96,6 @@ class SBOSocket {
         this.chatLog(`Reconnecting in ${this.reconnectInterval / 1000} seconds...`, "&e");
         this.reconnectTimeout = setTimeout(() => {
             this.chatLog("Reconnecting Socket...", "&e");
-            this.initializeWebSocket();
             this.connect();
         }, this.reconnectInterval);
     }
