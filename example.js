@@ -23,4 +23,8 @@ socket.connect();
  * this sends a custom event to the server 
  * and gives the server the ability to respond
  */
-socket.send('custom_event', args);
+socket.send('custom_event');
+
+register("command", (args) => { 
+    socket.send('custom_event', args);
+}).setName("example");
