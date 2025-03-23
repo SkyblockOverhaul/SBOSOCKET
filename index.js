@@ -25,8 +25,6 @@ class SBOSocket {
             key: []
         };
 
-        this.chatLogging = true;
-
         this.initializeSocket();
         this.rgisters();
     }
@@ -145,12 +143,7 @@ class SBOSocket {
         }
     }
 
-    disableChatLogging() {
-        this.chatLogging = false;
-    }
-
     chatLog(message, cCode = "&7") {
-        if (!this.chatLogging) return;
         ChatLib.chat("&6[SBO] " + cCode + message);
     }   
 
