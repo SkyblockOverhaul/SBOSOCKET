@@ -23,7 +23,8 @@ class SBOSocket {
             error: [],
             open: [],
             close: [],
-            key: []
+            key: [],
+            limited: []
         };
 
         this.registers();
@@ -58,13 +59,19 @@ class SBOSocket {
         this.ws.onClose = () => {
             this.connected = false;
             this.emit('close');
+            this.chatLog("Socket disconnected", "&c");
             if (this.unloaded) return;
         };
 
         this.on('key', (data) => {
             if (data.data) {
                 ChatLib.chat("&6[SBO] &cInvalid sbokey! Use &e/sbosetkey <key>&c")
-                ChatLib.chat("&6[SBO] &cSocket will be disconnected.")
+            }
+        });
+
+        this.on('limited', (data) => {
+            if (data.data) {
+                ChatLib.chat(`&6[SBO] &c${data.data}`);
             }
         });
 
