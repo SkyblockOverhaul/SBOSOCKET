@@ -1,21 +1,29 @@
 /// <reference types="../CTAutocomplete" />
 import WebSocket from '../WebSocket';
+import PogData from '../PogData';
+const File = Java.type("java.io.File");
 class SBOSocket {
     constructor() {
         const protocol = "wss://";
         const hostname = "api.skyblockoverhaul.com"
         const path = "/sbo-ws";
         this.url = `${protocol}${hostname}${path}`;
+
+        if (!new File("./config/sboSocket").exists()) {
+            new File("./config/sboSocket").mkdirs();
+        }
+        this.data = new PogData("../../../config/sboSocket", { sboKey: "" }, "data.json");
+        this.data.save();
         
         this.connected = false;
+        this.unloaded = false;
 
         this.eventListeners = {
             error: [],
             open: [],
-            close: []
+            close: [],
+            key: []
         };
-
-        this.chatLogging = true;
 
         this.initializeSocket();
         this.rgisters();
@@ -31,25 +39,63 @@ class SBOSocket {
             }
         };
         this.ws.onError = (err) => {
-            this.logError("Error:", err);
+            this.logError("Error:", JSON.stringify(err));
             this.emit('error', err);
         };
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
             this.connected = true;
+            this.send('playerData', {
+                name: Player.getName(),
+                uuid: Player.getUUID(),
+                sbokey: this.sbokey
+            });
             this.emit('open');
         };
         this.ws.onClose = () => {
-            this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
+            if(!this.unloaded) this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
             this.connected = false;
             this.emit('close');
         };
+
+        this.on('key', (data) => {
+            if (data.data) ChatLib.chat("&6[SBO] &cInvalid sbokey! Please set a valid key.");
+        });
     }
 
     rgisters() {
         register("gameUnload", () => {
+            this.unloaded = true;
             this.disconnect();
         });
+
+        this.connectStep = register("step", () => {
+            if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
+            this.connect();
+            this.sbokey = this.data.sboKey ? this.data.sboKey : java.util.UUID.randomUUID().toString().replace(/-/g, "");
+            if (!this.sbokey.startsWith("sbo")) {
+                try {
+                    const mc = Client.getMinecraft();
+                    mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
+                }
+                catch (e) { this.sbokey = undefined; print(JSON.stringify(e)) }
+            }
+            this.connectStep.unregister();
+        }).setFps(1);
+
+        register("command", (args1, ...args) => {
+            if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key")
+            this.data.sboKey = args1
+            this.data.save()
+            ChatLib.chat("&6[SBO] &aKey has been set")
+        }).setName("sbosetkey")
+
+        register("command", () => {
+            this.data.sboKey = ""
+            this.data.save()
+            ChatLib.chat("&6[SBO] &aKey has been reset")
+        }).setName("sboresetkey")
+            
     }
 
     connect() {
@@ -91,18 +137,13 @@ class SBOSocket {
                 try {
                     callback(...args);
                 } catch (e) {
-                    this.logError(`Error in ${event} listener:`, e);
+                    this.logError(`Error in ${event} listener:`, JSON.stringify(e));
                 }
             });
         }
     }
 
-    disableChatLogging() {
-        this.chatLogging = false;
-    }
-
     chatLog(message, cCode = "&7") {
-        if (!this.chatLogging) return;
         ChatLib.chat("&6[SBO] " + cCode + message);
     }   
 
@@ -119,4 +160,5 @@ class SBOSocket {
     }
 }
 
-export default new SBOSocket();
+const socket = new SBOSocket();
+export default socket;
