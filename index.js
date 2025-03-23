@@ -40,7 +40,7 @@ class SBOSocket {
             }
         };
         this.ws.onError = (err) => {
-            this.logError("Error:", err);
+            this.logError("Error:", JSON.stringify(err));
             this.emit('error', err);
         };
         this.ws.onOpen = () => {
@@ -80,7 +80,7 @@ class SBOSocket {
 
         register("command", (args1, ...args) => {
             if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key")
-            this.data.sboKey = args[0]
+            this.data.sboKey = args1
             this.data.save()
             ChatLib.chat("&6[SBO] &aKey has been set")
         }).setName("sbosetkey")
@@ -132,7 +132,7 @@ class SBOSocket {
                 try {
                     callback(...args);
                 } catch (e) {
-                    this.logError(`Error in ${event} listener:`, e);
+                    this.logError(`Error in ${event} listener:`, JSON.stringify(e));
                 }
             });
         }
