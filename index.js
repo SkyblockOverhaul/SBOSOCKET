@@ -74,7 +74,7 @@ class SBOSocket {
                 const mc = Client.getMinecraft();
                 mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
             }
-            catch (e) { this.sbokey = undefined; print(e) }
+            catch (e) { this.sbokey = undefined; print(JSON.stringify(e)) }
             connectStep.unregister();
         }).setFps(1);
 
