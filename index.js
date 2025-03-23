@@ -18,7 +18,6 @@ class SBOSocket {
         
         this.connected = false;
         this.unloaded = false;
-        this.reconnectAttempts = 0;
 
         this.eventListeners = {
             error: [],
@@ -48,7 +47,6 @@ class SBOSocket {
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
             this.connected = true;
-            this.reconnectAttempts = 0;
             this.send('playerData', {
                 name: Player.getName(),
                 uuid: Player.getUUID(),
@@ -61,16 +59,19 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
             if (this.unloaded) return;
-            this.reconnect();
         };
 
         this.on('key', (data) => {
-            if (data.data) ChatLib.chat("&6[SBO] &cInvalid sbokey! Please set a valid key.");
+            if (data.data) {
+                ChatLib.chat("&6[SBO] &cInvalid sbokey! Use &e/sbosetkey <key>&c")
+                ChatLib.chat("&6[SBO] &cSocket will be disconnected.")
+            }
         });
 
         this.connect();
-        this.sbokey = this.data.sboKey ? this.data.sboKey : java.util.UUID.randomUUID().toString().replace(/-/g, "");
-        if (!this.sbokey.startsWith("sbo")) {
+        if (this.data.sboKey) this.sbokey = this.data.sboKey;
+        if (!this.data.sboKey) {
+            this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
             try {
                 const mc = Client.getMinecraft();
                 mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
@@ -91,14 +92,8 @@ class SBOSocket {
         this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
             if (this.connected) return this.connectStep.unregister();
-            if (this.reconnectAttempts === 0) {
-                this.initializeSocket();
-                this.connectStep.unregister();
-                return;
-            } else if (this.reconnectAttempts % 120 === 0) {
-                this.reconnect();
-            }
-            this.reconnectAttempts++;
+            this.initializeSocket();
+            this.connectStep.unregister();
         }).setFps(1);
 
         register("command", (args1, ...args) => {
@@ -133,12 +128,6 @@ class SBOSocket {
 
     disconnect() {
         this.ws.close();
-    }
-
-    reconnect() {
-        if (!this.data.reconnectState) return this.connectStep.unregister();
-        this.chatLog("Attempting to reconnect...", "&e");
-        this.initializeSocket();
     }
 
     send(type, data = {}) {
