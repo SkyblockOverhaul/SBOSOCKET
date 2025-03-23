@@ -1,11 +1,19 @@
 /// <reference types="../CTAutocomplete" />
 import WebSocket from '../WebSocket';
+import PogData from '../PogData';
+const File = Java.type("java.io.File");
 class SBOSocket {
     constructor() {
         const protocol = "wss://";
         const hostname = "api.skyblockoverhaul.com"
         const path = "/sbo-ws";
         this.url = `${protocol}${hostname}${path}`;
+
+        if (!new File("./config/sboSocket").exists()) {
+            new File("./config/sboSocket").mkdirs();
+        }
+        this.data = new PogData("../../../config/sboSocket", { sboKey: "" }, "data.json");
+        this.data.save();
         
         this.connected = false;
         this.unloaded = false;
@@ -38,6 +46,11 @@ class SBOSocket {
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
             this.connected = true;
+            this.send('playerData', {
+                name: Player.getName(),
+                uuid: Player.getUUID(),
+                serverId: this.sbokey
+            });
             this.emit('open');
         };
         this.ws.onClose = () => {
@@ -52,6 +65,32 @@ class SBOSocket {
             this.unloaded = true;
             this.disconnect();
         });
+
+        const connectStep = register("step", () => {
+            if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
+            this.connect();
+            this.sbokey = this.data.sboKey ? this.data.sboKey : java.util.UUID.randomUUID().toString().replace(/-/g, "");
+            try {
+                const mc = Client.getMinecraft();
+                mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
+            }
+            catch (e) { this.sbokey = undefined; print(e) }
+            connectStep.unregister();
+        }).setFps(1);
+
+        register("command", (args1, ...args) => {
+            if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key")
+            this.data.sboKey = args[0]
+            this.data.save()
+            ChatLib.chat("&6[SBO] &aKey has been set")
+        }).setName("sbosetkey")
+
+        register("command", () => {
+            this.data.sboKey = ""
+            this.data.save()
+            ChatLib.chat("&6[SBO] &aKey has been reset")
+        }).setName("sboresetkey")
+            
     }
 
     connect() {
@@ -121,4 +160,5 @@ class SBOSocket {
     }
 }
 
-export default new SBOSocket();
+const socket = new SBOSocket();
+export default socket;
