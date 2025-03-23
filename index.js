@@ -66,7 +66,7 @@ class SBOSocket {
             this.disconnect();
         });
 
-        const connectStep = register("step", () => {
+        this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
             this.connect();
             this.sbokey = this.data.sboKey ? this.data.sboKey : java.util.UUID.randomUUID().toString().replace(/-/g, "");
@@ -75,7 +75,7 @@ class SBOSocket {
                 mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
             }
             catch (e) { this.sbokey = undefined; print(JSON.stringify(e)) }
-            connectStep.unregister();
+            this.connectStep.unregister();
         }).setFps(1);
 
         register("command", (args1, ...args) => {
