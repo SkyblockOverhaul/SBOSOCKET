@@ -21,7 +21,8 @@ class SBOSocket {
         this.eventListeners = {
             error: [],
             open: [],
-            close: []
+            close: [],
+            key: []
         };
 
         this.chatLogging = true;
@@ -49,7 +50,7 @@ class SBOSocket {
             this.send('playerData', {
                 name: Player.getName(),
                 uuid: Player.getUUID(),
-                serverId: this.sbokey
+                sbokey: this.sbokey
             });
             this.emit('open');
         };
@@ -58,6 +59,10 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
         };
+
+        this.on('key', (data) => {
+            if (data.data) ChatLib.chat("&6[SBO] &cInvalid sbokey! Please set a valid key.");
+        });
     }
 
     rgisters() {
@@ -70,11 +75,13 @@ class SBOSocket {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
             this.connect();
             this.sbokey = this.data.sboKey ? this.data.sboKey : java.util.UUID.randomUUID().toString().replace(/-/g, "");
-            try {
-                const mc = Client.getMinecraft();
-                mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
+            if (!this.sbokey.startsWith("sbo")) {
+                try {
+                    const mc = Client.getMinecraft();
+                    mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
+                }
+                catch (e) { this.sbokey = undefined; print(JSON.stringify(e)) }
             }
-            catch (e) { this.sbokey = undefined; print(JSON.stringify(e)) }
             this.connectStep.unregister();
         }).setFps(1);
 
