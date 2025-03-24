@@ -96,6 +96,15 @@ class SBOSocket {
             this.disconnect();
         });
 
+        register("serverConnect", () => {
+            this.connectStep.register();
+        });
+
+        register("serverDisconnect", () => {
+            this.unloaded = true;
+            this.disconnect();
+        });
+
         this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
             if (this.connected) return this.connectStep.unregister();
