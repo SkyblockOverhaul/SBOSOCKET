@@ -139,7 +139,7 @@ class SBOSocket {
     }
 
     connect() {
-        this.ws.connect();
+        this.initializeSocket();
     }
 
     disconnect() {
