@@ -2,6 +2,10 @@
  * The jar is from https://github.com/TooTallNate/Java-WebSocket/releases/tag/v1.6.0
  */
 
+/*
+* Wrapper code from Debbugings just changes the jar so the stupid error is gone with tls1.2 || https://chattriggers.com/modules/v/WebSocket
+*/
+
 export default class WebSocket {
     constructor(address) {
         this.address = address;
