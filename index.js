@@ -1,18 +1,19 @@
 /// <reference types="../CTAutocomplete" />
-import WebSocket from '../WebSocket';
+import WebSocket from './socketWrapper';
 import PogData from '../PogData';
 const File = Java.type("java.io.File");
+
 class SBOSocket {
     constructor() {
         const protocol = "wss://";
-        const hostname = "api.skyblockoverhaul.com"
+        const hostname = "api.skyblockoverhaul.com";
         const path = "/sbo-ws";
         this.url = `${protocol}${hostname}${path}`;
 
         if (!new File("./config/sboSocket").exists()) {
             new File("./config/sboSocket").mkdirs();
         }
-        this.data = new PogData("../../../config/sboSocket", { sboKey: "" }, "data.json");
+        this.data = new PogData("../../../config/sboSocket", { sboKey: "", reconnectState: true }, "data.json");
         this.data.save();
         
         this.connected = false;
@@ -22,11 +23,11 @@ class SBOSocket {
             error: [],
             open: [],
             close: [],
-            key: []
+            key: [],
+            limited: []
         };
 
-        this.initializeSocket();
-        this.rgisters();
+        this.registers();
     }
 
     initializeSocket() {
@@ -38,10 +39,12 @@ class SBOSocket {
                 this.emit(data.type, data);
             }
         };
+
         this.ws.onError = (err) => {
             this.logError("Error:", JSON.stringify(err));
             this.emit('error', err);
         };
+
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
             this.connected = true;
@@ -52,50 +55,87 @@ class SBOSocket {
             });
             this.emit('open');
         };
+
         this.ws.onClose = () => {
-            if(!this.unloaded) this.chatLog("Socket closed pls do /ct reload to connect again", "&c");
             this.connected = false;
             this.emit('close');
+            this.chatLog("Socket disconnected", "&c");
+            if (this.unloaded) return;
         };
 
         this.on('key', (data) => {
-            if (data.data) ChatLib.chat("&6[SBO] &cInvalid sbokey! Please set a valid key.");
+            if (data.data) {
+                ChatLib.chat("&6[SBO] &cInvalid sbokey! Use &e/sbosetkey <key>&c")
+            }
         });
+
+        this.on('limited', (data) => {
+            if (data.data) {
+                ChatLib.chat(`&6[SBO] &c${data.data}`);
+            }
+        });
+
+        this.connect();
+        if (this.data.sboKey) this.sbokey = this.data.sboKey;
+        if (!this.data.sboKey) {
+            this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
+            try {
+                const mc = Client.getMinecraft();
+                mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
+            } catch (e) {
+                this.sbokey = undefined;
+                print(JSON.stringify(e));
+                this.chatLog("Failed to auth your connection. Try to restart your game or refresh your session", "&c");
+            }
+        }
     }
 
-    rgisters() {
+    registers() {
         register("gameUnload", () => {
+            this.unloaded = true;
+            this.disconnect();
+        });
+
+        register("serverConnect", () => {
+            this.connectStep.register();
+        });
+
+        register("serverDisconnect", () => {
             this.unloaded = true;
             this.disconnect();
         });
 
         this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
-            this.connect();
-            this.sbokey = this.data.sboKey ? this.data.sboKey : java.util.UUID.randomUUID().toString().replace(/-/g, "");
-            if (!this.sbokey.startsWith("sbo")) {
-                try {
-                    const mc = Client.getMinecraft();
-                    mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
-                }
-                catch (e) { this.sbokey = undefined; print(JSON.stringify(e)) }
-            }
+            if (this.connected) return this.connectStep.unregister();
+            this.initializeSocket();
             this.connectStep.unregister();
         }).setFps(1);
 
         register("command", (args1, ...args) => {
-            if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key")
-            this.data.sboKey = args1
-            this.data.save()
-            ChatLib.chat("&6[SBO] &aKey has been set")
-        }).setName("sbosetkey")
+            if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key");
+            this.data.sboKey = args1;
+            this.data.save();
+            ChatLib.chat("&6[SBO] &aKey has been set");
+        }).setName("sbosetkey");
 
         register("command", () => {
-            this.data.sboKey = ""
-            this.data.save()
-            ChatLib.chat("&6[SBO] &aKey has been reset")
-        }).setName("sboresetkey")
+            this.data.sboKey = "";
+            this.data.save();
+            ChatLib.chat("&6[SBO] &aKey has been reset");
+        }).setName("sboresetkey");
             
+        register("command", () => {
+            this.data.reconnectState = false;
+            this.data.save();
+            ChatLib.chat(`&6[SBO] &aAuto reconnecting has been disabled`);
+        }).setName("sbodisablereconnect");
+
+        register("command", () => {
+            this.data.reconnectState = true;
+            this.data.save();
+            ChatLib.chat(`&6[SBO] &aAuto reconnecting has been enabled`);
+        }).setName("sboenablereconnect");
     }
 
     connect() {
