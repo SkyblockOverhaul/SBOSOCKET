@@ -1,5 +1,5 @@
 /// <reference types="../CTAutocomplete" />
-import WebSocket from './socketWrapper';
+import WebSocket from '../WebSocket';
 import PogData from '../PogData';
 const File = Java.type("java.io.File");
 
@@ -139,7 +139,7 @@ class SBOSocket {
     }
 
     connect() {
-        this.initializeSocket();
+        this.ws.connect();
     }
 
     disconnect() {
