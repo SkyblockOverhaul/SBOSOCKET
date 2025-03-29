@@ -75,7 +75,6 @@ class SBOSocket {
             }
         });
 
-        this.connect();
         if (this.data.sboKey) this.sbokey = this.data.sboKey;
         if (!this.data.sboKey) {
             this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
@@ -88,6 +87,8 @@ class SBOSocket {
                 this.chatLog("Failed to auth your connection. Try to restart your game or refresh your session", "&c");
             }
         }
+        
+        this.connect();
     }
 
     registers() {
