@@ -75,7 +75,6 @@ class SBOSocket {
             }
         });
 
-        this.connect();
         if (this.data.sboKey) this.sbokey = this.data.sboKey;
         if (!this.data.sboKey) {
             this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
@@ -88,6 +87,8 @@ class SBOSocket {
                 this.chatLog("Failed to auth your connection. Try to restart your game or refresh your session", "&c");
             }
         }
+
+        this.connect();
     }
 
     registers() {
@@ -124,18 +125,6 @@ class SBOSocket {
             this.data.save();
             ChatLib.chat("&6[SBO] &aKey has been reset");
         }).setName("sboresetkey");
-            
-        register("command", () => {
-            this.data.reconnectState = false;
-            this.data.save();
-            ChatLib.chat(`&6[SBO] &aAuto reconnecting has been disabled`);
-        }).setName("sbodisablereconnect");
-
-        register("command", () => {
-            this.data.reconnectState = true;
-            this.data.save();
-            ChatLib.chat(`&6[SBO] &aAuto reconnecting has been enabled`);
-        }).setName("sboenablereconnect");
     }
 
     connect() {
