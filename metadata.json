@@ -1,6 +1,6 @@
 {
   "name": "SBOSOCKET",
-  "creator": "RolexDE, D4rkswift",
+  "creator": "D4rkswift",
   "description": "SBOSOCKET is a module that allows you to send and receive data from the SBO server this is only for other SBO modules to use.",
   "version": "0.1.0",
   "entry": "index.js",
