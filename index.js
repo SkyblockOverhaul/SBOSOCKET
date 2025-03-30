@@ -1,5 +1,5 @@
 /// <reference types="../CTAutocomplete" />
-import WebSocket from './socketWrapper';
+import WebSocket from '../Websocket';
 import PogData from '../PogData';
 const File = Java.type("java.io.File");
 
