@@ -13,7 +13,7 @@ class SBOSocket {
         if (!new File("./config/sboSocket").exists()) {
             new File("./config/sboSocket").mkdirs();
         }
-        this.data = new PogData("../../../config/sboSocket", { sboKey: "", reconnectState: true }, "data.json");
+        this.data = new PogData("../../../config/sboSocket", { sboKey: "" }, "data.json");
         this.data.save();
         
         this.connected = false;
