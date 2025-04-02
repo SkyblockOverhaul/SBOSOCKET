@@ -1,6 +1,6 @@
 /// <reference types="../CTAutocomplete" />
-import WebSocket from '../Websocket';
-import PogData from '../PogData';
+import WebSocket from '../../Websocket';
+import PogData from '../../PogData';
 const File = Java.type("java.io.File");
 
 class SBOSocket {
@@ -18,6 +18,12 @@ class SBOSocket {
         
         this.connected = false;
         this.unloaded = false;
+
+        this.commands = [
+            {cmd: "sbosocket", desc: "Show this message"},
+            {cmd: "sbosetkey", desc: "Set your sbokey"},
+            {cmd: "sboresetkey", desc: "Reset your sbokey"}
+        ]
 
         this.eventListeners = {
             error: [],
@@ -125,6 +131,23 @@ class SBOSocket {
             this.data.save();
             ChatLib.chat("&6[SBO] &aKey has been reset");
         }).setName("sboresetkey");
+
+        register("command", () => {
+            ChatLib.chat(ChatLib.getChatBreak("&b-"));
+            ChatLib.chat("&aCan't connect or lag on reload? Set an sbokey from our Discord.")
+            new TextComponent("&e&nDiscord Link")
+            .setHover("show_text", "&aClick to Join the Discord")
+            .setClick("open_url", "https://discord.gg/QvM6b9jsJD")
+            .chat();
+            ChatLib.chat(ChatLib.getChatBreak("&b-"));
+            ChatLib.chat("&6[SBO] &eSocket Commands:");
+            this.commands.forEach(({cmd, desc}) => {
+                let text = new TextComponent(`&7> &a/${cmd} &7- &e${desc}`)
+                .setClick("run_command", `/${cmd}`)
+                .setHover("show_text", `&aClick to run &e/${cmd}`)
+                text.chat();
+            });
+        }).setName("sbosocket");
     }
 
     connect() {
