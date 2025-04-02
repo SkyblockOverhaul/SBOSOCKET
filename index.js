@@ -176,10 +176,6 @@ class SBOSocket {
         ChatLib.chat("&6[SBO] " + cCode + message);
     }   
 
-    log(...messages) {
-        console.log("[SBO]", ...messages);
-    }
-
     logError(...messages) {
         console.error("[SBO]", ...messages);
     }
