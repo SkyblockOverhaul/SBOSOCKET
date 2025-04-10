@@ -66,6 +66,10 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
+            if (!this.firstDisconnectTime) {
+                this.firstDisconnectTime = new Date().getTime();
+            }        
+            this.connectStep.register();
             if (this.unloaded) return;
         };
 
@@ -115,6 +119,16 @@ class SBOSocket {
         this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
             if (this.connected) return this.connectStep.unregister();
+            const now = new Date().getTime();
+            if (this.lastConnect && now - this.lastConnect < 300000) { // 5 minutes
+                if (this.firstDisconnectTime && now - this.firstDisconnectTime >= 1800000) { // 30 minutes
+                    this.lastConnect = now;
+                    this.initializeSocket();
+                    this.connectStep.unregister();
+                }
+                return;
+            }
+            this.lastConnect = now;
             this.initializeSocket();
             this.connectStep.unregister();
         }).setFps(1);
