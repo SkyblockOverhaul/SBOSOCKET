@@ -81,12 +81,14 @@ class SBOSocket {
         this.on('key', (data) => {
             if (data.data) {
                 ChatLib.chat("&6[SBO] &cInvalid sbokey! Use &e/sbosetkey <key>&c")
+                this.instaReconnect = false;
             }
         });
 
         this.on('limited', (data) => {
             if (data.data) {
                 ChatLib.chat(`&6[SBO] &c${data.data}`);
+                this.instaReconnect = false;
             }
         });
 
@@ -135,12 +137,14 @@ class SBOSocket {
         register("command", (args1, ...args) => {
             if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key");
             this.data.sboKey = args1;
+            this.sbokey = args1;
             this.data.save();
             ChatLib.chat("&6[SBO] &aKey has been set");
         }).setName("sbosetkey");
 
         register("command", () => {
             this.data.sboKey = "";
+            this.sbokey = "";
             this.data.save();
             ChatLib.chat("&6[SBO] &aKey has been reset");
         }).setName("sboresetkey");
