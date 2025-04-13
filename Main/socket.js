@@ -5,37 +5,24 @@ const File = Java.type("java.io.File");
 
 class SBOSocket {
     constructor() {
-        const protocol = "wss://";
-        const hostname = "api.skyblockoverhaul.com";
-        const path = "/sbo-ws";
-        this.url = `${protocol}${hostname}${path}`;
-
         if (!new File("./config/sboSocket").exists()) {
             new File("./config/sboSocket").mkdirs();
         }
-        this.data = new PogData("../../../config/sboSocket", { sboKey: "" }, "data.json");
+        this.url = "wss://api.skyblockoverhaul.com/sbo-ws";
+        this.data = new PogData("../../../config/sboSocket", { sboKey: "", reconnect: true }, "data.json");
         this.data.save();
-        
         this.connected = false;
         this.unloaded = false;
         this.stepActive = false;
         this.instaReconnect = true;
-
         this.commands = [
-            {cmd: "sbosocket", desc: "Show this message"},
-            {cmd: "sbosetkey", desc: "Set your sbokey"},
-            {cmd: "sboresetkey", desc: "Reset your sbokey"}
+            {cmd: "sboSocket", desc: "Show this message"},
+            {cmd: "sboSetKey", desc: "Set your sbokey"},
+            {cmd: "sboResetKey", desc: "Reset your sbokey"},
+            {cmd: "sboSetReconnect", desc: "Toggle auto reconnect"},
         ]
-
-        this.eventListeners = {
-            error: [],
-            open: [],
-            close: [],
-            key: [],
-            limited: []
-        };
-
-        this.registers();
+        this.eventListeners = {error: [], open: [], close: [], key: [], limited: []};
+        this.registerHandlers();
     }
 
     initializeSocket() {
@@ -44,9 +31,7 @@ class SBOSocket {
 
         this.ws.onMessage = (msg) => {
             const data = JSON.parse(msg);
-            if (data.type && this.eventListeners[data.type]) {
-                this.emit(data.type, data);
-            }
+            if (data.type && this.eventListeners[data.type]) this.emit(data.type, data);
         };
 
         this.ws.onError = (err) => {
@@ -70,10 +55,13 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
-            if (!this.stepActive && !this.unloaded) {
+            if (!this.stepActive && !this.unloaded && this.data.reconnect) {
                 this.connectStep.register();
                 this.stepActive = true;
-                if (!this.instaReconnect) this.chatLog("Socket not connected, trying to reconnect in 60 seconds...", "&c");
+                if (!this.instaReconnect) {
+                    this.chatLog("Socket not connected, trying to reconnect in 60 seconds", "&c");
+                    new TextComponent("&6[SBO] [&e&nDisable/Enable AutoReconnect&r&6]").setHover("show_text", "&aClick to disable AutoReconnect").setClick("run_command", "/sboSetReconnect").chat();
+                } 
                 else this.chatLog("Socket not connected, trying to reconnect...", "&c");
             }
         };
@@ -108,63 +96,62 @@ class SBOSocket {
         this.ws.connect();
     }
 
-    registers() {
-        register("gameUnload", () => {
-            this.unloaded = true;
-            this.disconnect();
-        });
-
-        register("serverConnect", () => {
-            if (!this.stepActive) {
-                this.connectStep.register();
-                this.stepActive = true;
-            }
-        });
-
-        register("serverDisconnect", () => {
-            this.disconnect();
-        });
-
+    registerHandlers() {
+        register("gameUnload", () => this.handleUnload());
+        register("serverConnect", () => this.handleServerConnect());
+        register("serverDisconnect", () => this.disconnect());
+        this.registerCommands();
 
         this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
             const now = new Date().getTime();
-            if (!this.lastConnect || now - this.lastConnect >= 60000 || this.instaReconnect) { //60 seconds
-                this.connect(now);
-            }
+            if (!this.lastConnect || now - this.lastConnect >= 60000 || this.instaReconnect) this.connect(now);
         }).setFps(1);
+    }
 
-        register("command", (args1, ...args) => {
-            if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key");
-            this.data.sboKey = args1;
-            this.sbokey = args1;
-            this.data.save();
-            ChatLib.chat("&6[SBO] &aKey has been set");
-        }).setName("sbosetkey");
-
-        register("command", () => {
-            this.data.sboKey = "";
-            this.sbokey = "";
-            this.data.save();
-            ChatLib.chat("&6[SBO] &aKey has been reset");
-        }).setName("sboresetkey");
-
+    registerCommands() {
         register("command", () => {
             ChatLib.chat(ChatLib.getChatBreak("&b-"));
             ChatLib.chat("&aCan't connect or lag on reload? Set an sbokey from our Discord.")
-            new TextComponent("&e&nDiscord Link")
-            .setHover("show_text", "&aClick to Join the Discord")
-            .setClick("open_url", "https://discord.gg/QvM6b9jsJD")
-            .chat();
+            new TextComponent("&e&nDiscord Link").setHover("show_text", "&aClick to Join the Discord").setClick("open_url", "https://discord.gg/QvM6b9jsJD").chat();
             ChatLib.chat(ChatLib.getChatBreak("&b-"));
             ChatLib.chat("&6[SBO] &eSocket Commands:");
             this.commands.forEach(({cmd, desc}) => {
-                let text = new TextComponent(`&7> &a/${cmd} &7- &e${desc}`)
-                .setClick("run_command", `/${cmd}`)
-                .setHover("show_text", `&aClick to run &e/${cmd}`)
+                let text = new TextComponent(`&7> &a/${cmd} &7- &e${desc}`).setClick("run_command", `/${cmd}`).setHover("show_text", `&aClick to run &e/${cmd}`)
                 text.chat();
             });
         }).setName("sbosocket");
+
+        [
+            ["sbosetkey", (arg) => {
+                if (!arg) return ChatLib.chat("&6[SBO] &cPlease provide a key");
+                this.data.sboKey = this.sbokey = arg;
+                this.data.save();
+                ChatLib.chat("&6[SBO] &aKey has been set");
+            }],
+            ["sboresetkey", () => {
+                this.data.sboKey = this.sbokey = "";
+                this.data.save();
+                ChatLib.chat("&6[SBO] &aKey has been reset");
+            }],
+            ["sboSetReconnect", () => {
+                this.data.reconnect = !this.data.reconnect;
+                this.data.save();
+                ChatLib.chat(`&6[SBO] &${this.data.reconnect ? "aAuto reconnect enabled" : "cAuto reconnect disabled"}`);
+            }]
+        ].forEach(([cmd, cb]) => register("command", cb).setName(cmd));
+    }
+
+    handleServerConnect() {
+        if (!this.stepActive) {
+            this.connectStep.register();
+            this.stepActive = true;
+        }
+    }
+
+    handleUnload() {
+        this.unloaded = true;
+        this.disconnect();
     }
 
     disconnect() {
@@ -181,15 +168,10 @@ class SBOSocket {
     }
 
     send(type, data = {}) {
-        if (this.connected) {
-            this.ws.send(JSON.stringify({
-                type: type,
-                data: data
-            }));
-        } else {
-            this.logWarn("Socket not connected, message not sent");
-        }
-    } 
+        this.connected
+            ? this.ws.send(JSON.stringify({ type, data }))
+            : this.logWarn("Socket not connected, message not sent");
+    }
 
     addEvent(event) {
         if (!this.eventListeners[event]) {
@@ -198,40 +180,22 @@ class SBOSocket {
     }
 
     on(event, callback) {
-        if (this.eventListeners[event]) {
-            this.eventListeners[event].push(callback);
-        } else {
-            this.logWarn(`Unknown event: ${event}`);
-        }
+        this.eventListeners[event]
+            ? this.eventListeners[event].push(callback)
+            : this.logWarn(`Unknown event: ${event}`);
     }
 
     emit(event, ...args) {
-        if (this.eventListeners[event]) {
-            this.eventListeners[event].forEach((callback) => {
-                try {
-                    callback(...args);
-                } catch (e) {
-                    this.logError(`Error in ${event} listener:`, JSON.stringify(e));
-                }
-            });
-        }
+        this.eventListeners[event]?.forEach((callback) => {
+            try { callback(...args); } 
+            catch (e) { this.logError(`Error in ${event} listener:`, JSON.stringify(e)); }
+        });
     }
 
-    getSbokey() {
-        return this.sbokey;
-    }
-
-    chatLog(message, cCode = "&7") {
-        ChatLib.chat("&6[SBO] " + cCode + message);
-    }   
-
-    logError(...messages) {
-        console.error("[SBO]", ...messages);
-    }
-
-    logWarn(...messages) {
-        console.warn("[SBO]", ...messages);
-    }
+    getSbokey() { return this.sbokey; }
+    chatLog(msg, code = "&7") { ChatLib.chat("&6[SBO] " + code + msg); }   
+    logError(...msg) { console.error("[SBO]", ...msg); }
+    logWarn(...msg) { console.warn("[SBO]", ...msg); }
 }
 
 export const socket = new SBOSocket();
