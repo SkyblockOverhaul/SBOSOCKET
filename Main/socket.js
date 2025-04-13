@@ -55,7 +55,6 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
-            this.logError("Socket closed with code:", code); // still needs testing
             if (code === 1006 || code === 1011) { // still needs testing
                 this.instaReconnect = false;
                 this.chatLog("Server rejected connection, waiting before reconnect...", "&c");
@@ -64,7 +63,7 @@ class SBOSocket {
                 this.connectStep.register();
                 this.stepActive = true;
                 if (!this.instaReconnect) {
-                    this.chatLog("Socket not connected, trying to reconnect in 60 seconds", "&c");
+                    this.chatLog("trying to reconnect in 60 seconds", "&c");
                     new TextComponent("&6[SBO] [&e&nDisable/Enable AutoReconnect&r&6]").setHover("show_text", "&aClick to disable AutoReconnect").setClick("run_command", "/sboSetReconnect").chat();
                 } 
                 else this.chatLog("Attempting immediate reconnect...", "&c");
