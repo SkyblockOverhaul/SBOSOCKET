@@ -18,6 +18,8 @@ class SBOSocket {
         
         this.connected = false;
         this.unloaded = false;
+        this.stepActive = false;
+        this.instaReconnect = true;
 
         this.commands = [
             {cmd: "sbosocket", desc: "Show this message"},
@@ -37,6 +39,7 @@ class SBOSocket {
     }
 
     initializeSocket() {
+        if (this.ws && this.connected) this.disconnect();
         this.ws = new WebSocket(this.url);
 
         this.ws.onMessage = (msg) => {
@@ -54,6 +57,7 @@ class SBOSocket {
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
             this.connected = true;
+            this.instaReconnect = true;
             this.send('playerData', {
                 name: Player.getName(),
                 uuid: Player.getUUID(),
@@ -66,18 +70,25 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
-            if (this.unloaded) return;
+            if (!this.stepActive && !this.unloaded) {
+                this.connectStep.register();
+                this.stepActive = true;
+                if (!this.instaReconnect) this.chatLog("Socket not connected, trying to reconnect in 60 seconds...", "&c");
+                else this.chatLog("Socket not connected, trying to reconnect...", "&c");
+            }
         };
 
         this.on('key', (data) => {
             if (data.data) {
                 ChatLib.chat("&6[SBO] &cInvalid sbokey! Use &e/sbosetkey <key>&c")
+                this.instaReconnect = false;
             }
         });
 
         this.on('limited', (data) => {
             if (data.data) {
                 ChatLib.chat(`&6[SBO] &c${data.data}`);
+                this.instaReconnect = false;
             }
         });
 
@@ -94,7 +105,7 @@ class SBOSocket {
             }
         }
 
-        this.connect();
+        this.ws.connect();
     }
 
     registers() {
@@ -104,30 +115,36 @@ class SBOSocket {
         });
 
         register("serverConnect", () => {
-            this.connectStep.register();
+            if (!this.stepActive) {
+                this.connectStep.register();
+                this.stepActive = true;
+            }
         });
 
         register("serverDisconnect", () => {
-            this.unloaded = true;
             this.disconnect();
         });
 
+
         this.connectStep = register("step", () => {
             if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
-            if (this.connected) return this.connectStep.unregister();
-            this.initializeSocket();
-            this.connectStep.unregister();
+            const now = new Date().getTime();
+            if (!this.lastConnect || now - this.lastConnect >= 60000 || this.instaReconnect) { //60 seconds
+                this.connect(now);
+            }
         }).setFps(1);
 
         register("command", (args1, ...args) => {
             if (!args1) return ChatLib.chat("&6[SBO] &cPlease provide a key");
             this.data.sboKey = args1;
+            this.sbokey = args1;
             this.data.save();
             ChatLib.chat("&6[SBO] &aKey has been set");
         }).setName("sbosetkey");
 
         register("command", () => {
             this.data.sboKey = "";
+            this.sbokey = "";
             this.data.save();
             ChatLib.chat("&6[SBO] &aKey has been reset");
         }).setName("sboresetkey");
@@ -150,12 +167,17 @@ class SBOSocket {
         }).setName("sbosocket");
     }
 
-    connect() {
-        this.ws.connect();
-    }
-
     disconnect() {
         this.ws.close();
+        this.connectStep.unregister();
+    }
+
+    connect(now) {
+        this.lastConnect = now;
+        this.initializeSocket();
+        this.connectStep.unregister();
+        this.stepActive = false;
+        this.instaReconnect = false;
     }
 
     send(type, data = {}) {
@@ -193,6 +215,10 @@ class SBOSocket {
                 }
             });
         }
+    }
+
+    getSbokey() {
+        return this.sbokey;
     }
 
     chatLog(message, cCode = "&7") {
