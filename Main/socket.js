@@ -51,10 +51,14 @@ class SBOSocket {
             this.emit('open');
         };
 
-        this.ws.onClose = () => {
+        this.ws.onClose = (code) => {
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
+            if (code === 1006 || code === 1011) {
+                this.instaReconnect = false;
+                this.chatLog("Server rejected connection, waiting before reconnect...", "&c");
+            }        
             if (!this.stepActive && !this.unloaded && this.data.reconnect) {
                 this.connectStep.register();
                 this.stepActive = true;
@@ -62,7 +66,7 @@ class SBOSocket {
                     this.chatLog("Socket not connected, trying to reconnect in 60 seconds", "&c");
                     new TextComponent("&6[SBO] [&e&nDisable/Enable AutoReconnect&r&6]").setHover("show_text", "&aClick to disable AutoReconnect").setClick("run_command", "/sboSetReconnect").chat();
                 } 
-                else this.chatLog("Socket not connected, trying to reconnect...", "&c");
+                else this.chatLog("Attempting immediate reconnect...", "&c");
             }
         };
 
