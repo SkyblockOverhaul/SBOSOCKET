@@ -27,10 +27,7 @@ class SBOSocket {
     }
 
     initializeSocket() {
-        if (this.connected || this.connecting) {
-            this.logWarn("Connection already in progress or established");
-            return;
-        }
+        if (this.connected || this.connecting) return this.logWarn("Connection already in progress or established");
         if (this.ws) {
             this.ws.close();
             this.ws = null;
@@ -181,10 +178,7 @@ class SBOSocket {
     }
 
     connect(now) {
-        if (this.connected || this.connecting) {
-            this.logWarn("Already connected or connecting");
-            return;
-        }
+        if (this.connected || this.connecting) return this.logWarn("Already connected or connecting");
         this.lastConnect = now;
         this.initializeSocket();
         this.connectStep.unregister();
