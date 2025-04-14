@@ -12,6 +12,7 @@ class SBOSocket {
         this.data = new PogData("../../../config/sboSocket", { sboKey: "", reconnect: true }, "data.json");
         this.data.save();
         this.connected = false;
+        this.connecting = false; 
         this.unloaded = false;
         this.stepActive = false;
         this.instaReconnect = true;
@@ -26,7 +27,12 @@ class SBOSocket {
     }
 
     initializeSocket() {
-        if (this.ws && this.connected) this.disconnect();
+        if (this.connected || this.connecting) return this.logWarn("Connection already in progress or established");
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+        this.connecting = true;
         this.ws = new WebSocket(this.url);
 
         this.ws.onMessage = (msg) => {
@@ -35,12 +41,14 @@ class SBOSocket {
         };
 
         this.ws.onError = (err) => {
+            this.connecting = false;
             this.logError("Error:", JSON.stringify(err));
             this.emit('error', err);
         };
 
         this.ws.onOpen = () => {
             this.chatLog("Socket connected", "&a");
+            this.connecting = false;
             this.connected = true;
             this.instaReconnect = true;
             this.send('playerData', {
@@ -51,18 +59,23 @@ class SBOSocket {
             this.emit('open');
         };
 
-        this.ws.onClose = () => {
+        this.ws.onClose = (code) => {
+            this.connecting = false;
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
+            if (code === 1006 || code === 1011) { // still needs testing
+                this.instaReconnect = false;
+                this.chatLog("Server rejected connection, waiting before reconnect...", "&c");
+            }        
             if (!this.stepActive && !this.unloaded && this.data.reconnect) {
                 this.connectStep.register();
                 this.stepActive = true;
                 if (!this.instaReconnect) {
-                    this.chatLog("Socket not connected, trying to reconnect in 60 seconds", "&c");
+                    this.chatLog("trying to reconnect in 60 seconds", "&c");
                     new TextComponent("&6[SBO] [&e&nDisable/Enable AutoReconnect&r&6]").setHover("show_text", "&aClick to disable AutoReconnect").setClick("run_command", "/sboSetReconnect").chat();
                 } 
-                else this.chatLog("Socket not connected, trying to reconnect...", "&c");
+                else this.chatLog("Attempting immediate reconnect...", "&c");
             }
         };
 
@@ -155,11 +168,17 @@ class SBOSocket {
     }
 
     disconnect() {
-        this.ws.close();
+        this.connecting = false;
+        this.connected = false;
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
         this.connectStep.unregister();
     }
 
     connect(now) {
+        if (this.connected || this.connecting) return this.logWarn("Already connected or connecting");
         this.lastConnect = now;
         this.initializeSocket();
         this.connectStep.unregister();
