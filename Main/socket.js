@@ -175,6 +175,7 @@ class SBOSocket {
             this.ws = null;
         }
         this.connectStep.unregister();
+        this.stepActive = false;
     }
 
     connect(now) {
