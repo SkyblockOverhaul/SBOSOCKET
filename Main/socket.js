@@ -64,7 +64,6 @@ class SBOSocket {
             this.connected = false;
             this.emit('close');
             this.chatLog("Socket disconnected", "&c");
-            print(code);
             if (code === 1006 || code === 1011 || code === 1001 || code === 4000) { // still needs testing
                 this.instaReconnect = false;
                 this.chatLog("Server rejected connection, waiting before reconnect...", "&c");
