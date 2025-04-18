@@ -9,18 +9,19 @@ class SBOSocket {
             new File("./config/sboSocket").mkdirs();
         }
         this.url = "wss://api.skyblockoverhaul.com/sbo-ws";
-        this.data = new PogData("../../../config/sboSocket", { sboKey: "", reconnect: true }, "data.json");
+        this.data = new PogData("../../../config/sboSocket", { sboKey: ""}, "data.json");
         this.data.save();
         this.connected = false;
         this.connecting = false; 
         this.unloaded = false;
         this.stepActive = false;
         this.instaReconnect = true;
+        this.autoReconnect = true
         this.commands = [
             {cmd: "sboSocket", desc: "Show this message"},
             {cmd: "sboSetKey", desc: "Set your sbokey"},
             {cmd: "sboResetKey", desc: "Reset your sbokey"},
-            {cmd: "sboSetReconnect", desc: "Toggle auto reconnect"},
+            {cmd: "sboDisableReconnect", desc: "Disable auto reconnect"},
         ]
         this.eventListeners = {error: [], open: [], close: [], key: [], limited: []};
         this.registerHandlers();
@@ -67,7 +68,7 @@ class SBOSocket {
                 this.instaReconnect = false;
                 this.logWarn("Server rejected connection, waiting 60s before reconnect...", "&c");
             }        
-            if (!this.stepActive && !this.unloaded && this.data.reconnect) {
+            if (!this.stepActive && !this.unloaded && this.autoReconnect) {
                 this.connectStep.register();
                 this.stepActive = true;
             }
@@ -135,10 +136,9 @@ class SBOSocket {
                 this.data.save();
                 ChatLib.chat("&6[SBO] &aKey has been reset");
             }],
-            ["sboSetReconnect", () => {
-                this.data.reconnect = !this.data.reconnect;
-                this.data.save();
-                ChatLib.chat(`&6[SBO] &${this.data.reconnect ? "aAuto reconnect enabled" : "cAuto reconnect disabled"}`);
+            ["sboDisableReconnect", () => {
+                this.autoReconnect = false
+                ChatLib.chat(`&6[SBO] &aAuto reconnect has been disabled`);
             }]
         ].forEach(([cmd, cb]) => register("command", cb).setName(cmd));
     }
