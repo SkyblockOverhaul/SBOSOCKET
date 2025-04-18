@@ -27,7 +27,7 @@ class SBOSocket {
     }
 
     initializeSocket() {
-        if (this.connected || this.connecting) return this.logWarn("Connection already in progress or established");
+        if (this.connected || this.connecting) return
         if (this.ws) {
             this.ws.close();
             this.ws = null;
@@ -47,7 +47,7 @@ class SBOSocket {
         };
 
         this.ws.onOpen = () => {
-            this.chatLog("Socket connected", "&a");
+            this.joinMojangSessionServer();
             this.connecting = false;
             this.connected = true;
             this.instaReconnect = true;
@@ -63,48 +63,36 @@ class SBOSocket {
             this.connecting = false;
             this.connected = false;
             this.emit('close');
-            this.chatLog("Socket disconnected", "&c");
             if (code === 1006 || code === 1011 || code === 1001 || code === 4000) { // still needs testing
                 this.instaReconnect = false;
-                this.chatLog("Server rejected connection, waiting before reconnect...", "&c");
+                this.logWarn("Server rejected connection, waiting 60s before reconnect...", "&c");
             }        
             if (!this.stepActive && !this.unloaded && this.data.reconnect) {
                 this.connectStep.register();
                 this.stepActive = true;
-                if (!this.instaReconnect) {
-                    this.chatLog("trying to reconnect in 60 seconds", "&c");
-                    new TextComponent("&6[SBO] [&e&nDisable/Enable AutoReconnect&r&6]").setHover("show_text", "&aClick to disable AutoReconnect").setClick("run_command", "/sboSetReconnect").chat();
-                } 
-                else this.chatLog("Attempting immediate reconnect...", "&c");
             }
         };
 
         this.on('key', (data) => {
             if (data.data) {
-                ChatLib.chat("&6[SBO] &cInvalid sbokey! Use &e/sbosetkey <key>&c")
+                this.logWarn("Invalid sbokey! Use &e/sbosetkey <key>")
                 this.instaReconnect = false;
             }
         });
 
         this.on('limited', (data) => {
             if (data.data) {
-                ChatLib.chat(`&6[SBO] &c${data.data}`);
+                this.logWarn(`${data.data}`);
                 this.instaReconnect = false;
             }
         });
 
-        if (this.data.sboKey) this.sbokey = this.data.sboKey;
-        if (!this.data.sboKey) {
-            this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
-            try {
-                const mc = Client.getMinecraft();
-                mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
-            } catch (e) {
-                this.sbokey = undefined;
-                print(JSON.stringify(e));
-                this.chatLog("Failed to auth your connection. Try to restart your game or refresh your session", "&c");
+        this.on('error', (data) => {
+            if (data.data) {
+                this.logError(`${data.data}`);
+                this.instaReconnect = false;
             }
-        }
+        });
 
         this.ws.connect();
     }
@@ -179,12 +167,27 @@ class SBOSocket {
     }
 
     connect(now) {
-        if (this.connected || this.connecting) return this.logWarn("Already connected or connecting");
+        if (this.connected || this.connecting) return
         this.lastConnect = now;
         this.initializeSocket();
         this.connectStep.unregister();
         this.stepActive = false;
         this.instaReconnect = false;
+    }
+
+    joinMojangSessionServer() {
+        if (this.data.sboKey) this.sbokey = this.data.sboKey;
+        if (!this.data.sboKey) {
+            this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
+            try {
+                const mc = Client.getMinecraft();
+                mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
+            } catch (e) {
+                this.sbokey = undefined;
+                print(JSON.stringify(e));
+                this.logWarn("Failed to auth your connection. Try to restart your game or refresh your session");
+            }
+        }
     }
 
     send(type, data = {}) {
@@ -213,7 +216,6 @@ class SBOSocket {
     }
 
     getSbokey() { return this.sbokey; }
-    chatLog(msg, code = "&7") { ChatLib.chat("&6[SBO] " + code + msg); }   
     logError(...msg) { console.error("[SBO]", ...msg); }
     logWarn(...msg) { console.warn("[SBO]", ...msg); }
 }
