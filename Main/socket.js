@@ -1,6 +1,7 @@
 /// <reference types="../CTAutocomplete" />
 import WebSocket from '../../WebSocket';
 import PogData from '../../PogData';
+import sleep from './sleep';
 const File = Java.type("java.io.File");
 
 class SBOSocket {
@@ -14,7 +15,6 @@ class SBOSocket {
         this.connected = false;
         this.connecting = false; 
         this.unloaded = false;
-        this.stepActive = false;
         this.instaReconnect = true;
         this.autoReconnect = true
         this.commands = [
@@ -24,11 +24,14 @@ class SBOSocket {
             {cmd: "sboDisableReconnect", desc: "Disable auto reconnect"},
         ]
         this.eventListeners = {error: [], open: [], close: [], key: [], limited: []};
+        this.closeCodes = [1006, 1011, 1001, 4000];
         this.registerHandlers();
+        this.registerCommands();
+        this.connect()
     }
 
     initializeSocket() {
-        if (this.connected || this.connecting) return
+        if (this.isBusyConnecting()) return
         if (this.ws) {
             this.ws.close();
             this.ws = null;
@@ -42,7 +45,7 @@ class SBOSocket {
         };
 
         this.ws.onError = (err) => {
-            this.connecting = false;
+            this.resetBusyConnecting();
             this.logError("Error:", JSON.stringify(err));
             this.emit('error', err);
         };
@@ -62,18 +65,11 @@ class SBOSocket {
         };
 
         this.ws.onClose = (code, reason) => {
-            this.connecting = false;
-            this.connected = false;
+            this.resetBusyConnecting();
             this.logInfo("Socket disconnected! Code:", code, "Reason:", reason);
             this.emit('close');
-            if (code === 1006 || code === 1011 || code === 1001 || code === 4000) { // still needs testing
-                this.instaReconnect = false;
-                this.logWarn("Server rejected connection, waiting 60s before reconnect...", "&c");
-            }        
-            if (!this.stepActive && !this.unloaded && this.autoReconnect) {
-                this.connectStep.register();
-                this.stepActive = true;
-            }
+            this.handleCloseCodes(code);
+            if (!this.unloaded) this.handleReconnect(); 
         };
 
         this.on('key', (data) => {
@@ -104,17 +100,10 @@ class SBOSocket {
         register("gameUnload", () => this.handleUnload());
         register("serverConnect", () => this.handleServerConnect());
         register("serverDisconnect", () => this.disconnect());
-        this.registerCommands();
-
-        this.connectStep = register("step", () => {
-            if (!Scoreboard.getTitle()?.removeFormatting().includes("SKYBLOCK")) return;
-            const now = new Date().getTime();
-            if (!this.lastConnect || now - this.lastConnect >= 60000 || this.instaReconnect) this.connect(now);
-        }).setFps(1);
     }
 
     registerCommands() {
-        register("command", () => {
+        this.addCommand("sboSocket", () => {
             ChatLib.chat(ChatLib.getChatBreak("&b-"));
             ChatLib.chat("&aCan't connect or lag on reload? Set an sbokey from our Discord.")
             new TextComponent("&e&nDiscord Link").setHover("show_text", "&aClick to Join the Discord").setClick("open_url", "https://discord.gg/QvM6b9jsJD").chat();
@@ -124,34 +113,31 @@ class SBOSocket {
                 let text = new TextComponent(`&7> &a/${cmd} &7- &e${desc}`).setClick("run_command", `/${cmd}`).setHover("show_text", `&aClick to run &e/${cmd}`)
                 text.chat();
             });
-        }).setName("sbosocket");
-
-        [
-            ["sbosetkey", (arg) => {
-                if (!arg) return ChatLib.chat("&6[SBO] &cPlease provide a key");
-                if (!arg.startsWith("sbo")) return ChatLib.chat("&6[SBO] &cInvalid key format! get one in our Discord");
-                this.data.sboKey = this.sbokey = arg;
-                this.data.save();
-                ChatLib.chat("&6[SBO] &aKey has been set");
-            }],
-            ["sboresetkey", () => {
-                this.data.sboKey = ""
-                this.sbokey = this.generateKey();
-                this.data.save();
-                ChatLib.chat("&6[SBO] &aKey has been reset");
-            }],
-            ["sboDisableReconnect", () => {
-                this.autoReconnect = false
-                ChatLib.chat(`&6[SBO] &aAuto reconnect has been disabled`);
-            }]
-        ].forEach(([cmd, cb]) => register("command", cb).setName(cmd));
+        });
+        this.addCommand("sboSetKey", (arg) => {
+            if (!arg) return ChatLib.chat("&6[SBO] &cPlease provide a key");
+            if (!arg.startsWith("sbo")) return ChatLib.chat("&6[SBO] &cInvalid key format! get one in our Discord");
+            this.data.sboKey = this.sbokey = arg;
+            this.data.save();
+            ChatLib.chat("&6[SBO] &aKey has been set");
+        });
+        this.addCommand("sboResetKey", () => {
+            this.data.sboKey = ""
+            this.sbokey = this.generateKey();
+            this.data.save();
+            ChatLib.chat("&6[SBO] &aKey has been reset");
+        });
+        this.addCommand("sboDisableReconnect", () => {
+            this.autoReconnect = false
+            ChatLib.chat(`&6[SBO] &aAuto reconnect has been disabled`);
+        });
     }
 
     handleServerConnect() {
-        if (!this.stepActive) {
-            this.connectStep.register();
-            this.stepActive = true;
-        }
+        if (this.isBusyConnecting()) return
+        this.instaReconnect = true;
+        this.autoReconnect = true;
+        this.connect();
     }
 
     handleUnload() {
@@ -159,23 +145,30 @@ class SBOSocket {
         this.disconnect();
     }
 
+    handleReconnect() {
+        if (this.isBusyConnecting()) return
+        if (this.instaReconnect) return sleep(2000, () => this.connect());
+        if (this.autoReconnect) return sleep(60000, () => this.connect());
+    }
+
+    handleCloseCodes(code) {
+        if (this.closeCodes.includes(code)) {
+            this.instaReconnect = false;
+            this.logWarn("Server rejected connection, waiting 60s before reconnect...", "&c");
+        }
+    } 
+
     disconnect() {
-        this.connecting = false;
-        this.connected = false;
+        this.resetBusyConnecting();
         if (this.ws) {
             this.ws.close();
             this.ws = null;
         }
-        this.connectStep.unregister();
-        this.stepActive = false;
     }
 
-    connect(now) {
-        if (this.connected || this.connecting) return
-        this.lastConnect = now;
+    connect() {
+        if (this.isBusyConnecting()) return
         this.initializeSocket();
-        this.connectStep.unregister();
-        this.stepActive = false;
         this.instaReconnect = false;
     }
 
@@ -193,10 +186,6 @@ class SBOSocket {
                 this.logWarn("Failed to auth your connection. Try to restart your game or refresh your session");
             }
         }
-    }
-
-    generateKey() {
-        return java.util.UUID.randomUUID().toString().replace(/-/g, "");
     }
 
     send(type, data = {}) {
@@ -224,6 +213,10 @@ class SBOSocket {
         });
     }
 
+    addCommand = (name, callback) => register("command", callback).setName(name);
+    generateKey() { return java.util.UUID.randomUUID().toString().replace(/-/g, ""); }
+    isBusyConnecting() { return this.connected || this.connecting; }
+    resetBusyConnecting() { this.connected = false; this.connecting = false; }   
     getSbokey() { return this.sbokey; }
     logInfo(...msg) { console.log("[SBO]", ...msg); }
     logError(...msg) { console.error("[SBO]", ...msg); }
