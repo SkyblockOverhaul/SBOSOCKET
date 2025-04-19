@@ -127,12 +127,14 @@ class SBOSocket {
         [
             ["sbosetkey", (arg) => {
                 if (!arg) return ChatLib.chat("&6[SBO] &cPlease provide a key");
+                if (!arg.startsWith("sbo")) return ChatLib.chat("&6[SBO] &cInvalid key format! get one in our Discord");
                 this.data.sboKey = this.sbokey = arg;
                 this.data.save();
                 ChatLib.chat("&6[SBO] &aKey has been set");
             }],
             ["sboresetkey", () => {
-                this.data.sboKey = this.sbokey = "";
+                this.data.sboKey = ""
+                this.sbokey = this.generateKey();
                 this.data.save();
                 ChatLib.chat("&6[SBO] &aKey has been reset");
             }],
@@ -177,8 +179,9 @@ class SBOSocket {
 
     joinMojangSessionServer() {
         if (this.data.sboKey) this.sbokey = this.data.sboKey;
+        if (this.data.sboKey && !this.sbokey.startsWith("sbo")) this.sbokey = this.generateKey(), this.data.sboKey = "", this.data.save();
         if (!this.data.sboKey) {
-            this.sbokey = java.util.UUID.randomUUID().toString().replace(/-/g, "");
+            if (!this.sbokey) this.sbokey = this.generateKey();
             try {
                 const mc = Client.getMinecraft();
                 mc.func_152347_ac().joinServer(mc.func_110432_I().func_148256_e(), mc.func_110432_I().func_148254_d(), this.sbokey)
@@ -188,6 +191,10 @@ class SBOSocket {
                 this.logWarn("Failed to auth your connection. Try to restart your game or refresh your session");
             }
         }
+    }
+
+    generateKey() {
+        return java.util.UUID.randomUUID().toString().replace(/-/g, "");
     }
 
     send(type, data = {}) {
