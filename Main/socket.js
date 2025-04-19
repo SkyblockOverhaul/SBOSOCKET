@@ -52,6 +52,7 @@ class SBOSocket {
             this.connecting = false;
             this.connected = true;
             this.instaReconnect = true;
+            this.logInfo("Connected to socket!");
             this.send('playerData', {
                 name: Player.getName(),
                 uuid: Player.getUUID(),
@@ -63,7 +64,7 @@ class SBOSocket {
         this.ws.onClose = (code) => {
             this.connecting = false;
             this.connected = false;
-            this.logWarn("Socket closed:", code);
+            this.logInfo("Socket disconnected! Code:", code);
             this.emit('close');
             if (code === 1006 || code === 1011 || code === 1001 || code === 4000) { // still needs testing
                 this.instaReconnect = false;
@@ -224,6 +225,7 @@ class SBOSocket {
     }
 
     getSbokey() { return this.sbokey; }
+    logInfo(...msg) { console.log("[SBO]", ...msg); }
     logError(...msg) { console.error("[SBO]", ...msg); }
     logWarn(...msg) { console.warn("[SBO]", ...msg); }
 }
