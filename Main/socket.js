@@ -61,10 +61,10 @@ class SBOSocket {
             this.emit('open');
         };
 
-        this.ws.onClose = (code) => {
+        this.ws.onClose = (code, reason) => {
             this.connecting = false;
             this.connected = false;
-            this.logInfo("Socket disconnected! Code:", code);
+            this.logInfo("Socket disconnected! Code:", code, "Reason:", reason);
             this.emit('close');
             if (code === 1006 || code === 1011 || code === 1001 || code === 4000) { // still needs testing
                 this.instaReconnect = false;
