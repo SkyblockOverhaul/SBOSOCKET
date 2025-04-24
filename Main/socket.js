@@ -56,11 +56,15 @@ class SBOSocket {
             this.connected = true;
             this.instaReconnect = true;
             this.logInfo("Connected to socket!");
-            this.send('playerData', {
-                name: Player.getName(),
-                uuid: Player.getUUID(),
-                sbokey: this.sbokey
-            });
+            if (!this.sbokey) this.sbokey = "FailedToAuth";
+            sleep(1000, () => {
+                this.send('playerData', {
+                    name: Player.getName(),
+                    uuid: Player.getUUID(),
+                    sbokey: this.sbokey
+                })
+            })
+            if (this.sbokey == "FailedToAuth") this.sbokey = undefined;
             this.emit('open');
         };
 
@@ -69,7 +73,7 @@ class SBOSocket {
             this.logInfo("Socket disconnected! Code:", code, "Reason:", reason);
             this.emit('close');
             this.handleCloseCodes(code);
-            if (!this.unloaded) this.handleReconnect(); 
+            this.handleReconnect(); 
         };
 
         this.on('key', (data) => {
@@ -99,7 +103,7 @@ class SBOSocket {
     registerHandlers() {
         register("gameUnload", () => this.handleUnload());
         register("serverConnect", () => this.handleServerConnect());
-        register("serverDisconnect", () => this.disconnect());
+        register("serverDisconnect", () => this.handleServerDisconnect());
     }
 
     registerCommands() {
@@ -137,7 +141,13 @@ class SBOSocket {
         if (this.isBusyConnecting()) return
         this.instaReconnect = true;
         this.autoReconnect = true;
+        this.disconnected = false;
         this.connect();
+    }
+
+    handleServerDisconnect() {
+        this.disconnected = true;
+        this.disconnect();
     }
 
     handleUnload() {
@@ -147,6 +157,8 @@ class SBOSocket {
 
     handleReconnect() {
         if (this.isBusyConnecting()) return
+        if (this.disconnected) return
+        if (this.unloaded) return
         if (this.instaReconnect) return sleep(2000, () => this.connect());
         if (this.autoReconnect) return sleep(60000, () => this.connect());
     }
@@ -184,6 +196,7 @@ class SBOSocket {
                 this.sbokey = undefined;
                 print(JSON.stringify(e));
                 this.logWarn("Failed to auth your connection. Try to restart your game or refresh your session");
+                this.logWarn("you can also set an sbokey from our Discord for this not to happen")
             }
         }
     }
