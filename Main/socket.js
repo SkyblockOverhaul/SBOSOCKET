@@ -70,7 +70,7 @@ class SBOSocket {
 
         this.ws.onClose = (code, reason) => {
             this.resetBusyConnecting();
-            this.logInfo("Socket disconnected! Code:", code, "Reason:", reason);
+            if (!this.unloaded) this.logInfo("Socket disconnected! Code:", code, "Reason:", reason);
             this.emit('close');
             this.handleCloseCodes(code);
             this.handleReconnect(); 
@@ -236,4 +236,4 @@ class SBOSocket {
     logWarn(...msg) { console.warn("[SBO]", ...msg); }
 }
 
-export const socket = new SBOSocket();
+// export const socket = new SBOSocket();
